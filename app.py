@@ -2,6 +2,7 @@ import base64
 import html
 import io
 from datetime import datetime
+from pathlib import Path
 
 import streamlit as st
 from reportlab.lib import colors
@@ -13,6 +14,43 @@ from reportlab.lib.utils import ImageReader
 
 
 st.set_page_config(page_title="CV Xin Viec", page_icon="📄", layout="wide")
+
+_APP_DIR = Path(__file__).resolve().parent
+
+# Trên Streamlit Cloud (Linux) không có C:/Windows/Fonts — cần TTF hỗ trợ Unicode (tiếng Việt).
+_LINUX_VIETNAMESE_FONT_CANDIDATES = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSans-VF.ttf",
+    "/usr/share/fonts/opentype/noto/NotoSans-Regular.ttf",
+]
+
+
+def _collect_unicode_pdf_font_paths() -> list[Path]:
+    """Ưu tiên font kèm repo, sau đó font có sẵn trên Linux (deploy)."""
+    ordered: list[Path] = []
+    bundled = _APP_DIR / "fonts"
+    if bundled.is_dir():
+        ordered.extend(sorted(bundled.glob("*.ttf")))
+        ordered.extend(sorted(bundled.glob("*.TTF")))
+    for p in _LINUX_VIETNAMESE_FONT_CANDIDATES:
+        ordered.append(Path(p))
+    return ordered
+
+
+def _register_ttf_once(font_id: str, font_path: str | Path) -> bool:
+    path_str = str(font_path) if font_path else ""
+    if not path_str or not Path(path_str).is_file():
+        return False
+    try:
+        if font_id in pdfmetrics.getRegisteredFontNames():
+            return True
+        pdfmetrics.registerFont(TTFont(font_id, path_str))
+        return True
+    except Exception:
+        return False
 
 
 FONT_CONFIGS = {
@@ -53,24 +91,23 @@ FONT_CONFIGS = {
 
 def _register_font_if_possible(selected_font: str) -> str:
     configs = FONT_CONFIGS.get(selected_font, FONT_CONFIGS["Arial"])
+    preferred_id = f"VNFont_{selected_font.replace(' ', '_')}"
     for font_path in configs["paths"]:
-        try:
-            font_id = f"VNFont_{selected_font.replace(' ', '_')}"
-            pdfmetrics.registerFont(TTFont(font_id, font_path))
-            return font_id
-        except Exception:
-            continue
-    fallback_paths = [
+        if _register_ttf_once(preferred_id, font_path):
+            return preferred_id
+
+    universal_id = "VNFont_Universal"
+    for candidate in _collect_unicode_pdf_font_paths():
+        if _register_ttf_once(universal_id, candidate):
+            return universal_id
+
+    for font_path in [
         "C:/Windows/Fonts/arial.ttf",
         "C:/Windows/Fonts/tahoma.ttf",
         "C:/Windows/Fonts/times.ttf",
-    ]
-    for font_path in fallback_paths:
-        try:
-            pdfmetrics.registerFont(TTFont("VNFont_Fallback", font_path))
-            return "VNFont_Fallback"
-        except Exception:
-            continue
+    ]:
+        if _register_ttf_once(universal_id, font_path):
+            return universal_id
     return "Helvetica"
 
 
