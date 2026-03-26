@@ -154,6 +154,43 @@ FONT_CONFIGS = {
 }
 
 
+TEMPLATE_PRESETS = {
+    # Phong cách giữ nguyên với mẫu hiện tại của bạn
+    "Vintage Kem (Mặc định)": {
+        "accent": "#8a7364",
+        "text": "#3a3a3a",
+        "soft_text": "#3c3c3c",
+        "year_bg": "#3a3a3a",
+        "year_text": "#ffffff",
+    },
+    "Modern Xanh": {
+        "accent": "#2a6f97",
+        "text": "#1f2a37",
+        "soft_text": "#2b3547",
+        "year_bg": "#0f4d6a",
+        "year_text": "#ffffff",
+    },
+    "Minimal Đen Trắng": {
+        "accent": "#111111",
+        "text": "#1a1a1a",
+        "soft_text": "#2a2a2a",
+        "year_bg": "#1a1a1a",
+        "year_text": "#ffffff",
+    },
+    "Pastel Hồng": {
+        "accent": "#b86b6b",
+        "text": "#3a2a2a",
+        "soft_text": "#3f2f2f",
+        "year_bg": "#7a4d4d",
+        "year_text": "#ffffff",
+    },
+}
+
+
+def _get_template_style(template_name: str) -> dict:
+    return TEMPLATE_PRESETS.get(template_name, TEMPLATE_PRESETS["Vintage Kem (Mặc định)"])
+
+
 def _register_font_if_possible(selected_font: str) -> str:
     configs = FONT_CONFIGS.get(selected_font, FONT_CONFIGS["Arial"])
     preferred_id = f"VNFont_{selected_font.replace(' ', '_')}"
@@ -327,11 +364,18 @@ def _build_preview_html(data: dict, avatar_bytes: bytes | None) -> str:
         bg_css = data.get("bg_color_1", "#f4f0eb")
     selected_font = data.get("font_choice", "Arial")
     css_font_family = FONT_CONFIGS.get(selected_font, FONT_CONFIGS["Arial"])["css"]
+    template_name = data.get("template_name", "Vintage Kem (Mặc định)")
+    template_style = _get_template_style(template_name)
+    accent_color = template_style["accent"]
+    text_color = template_style["text"]
+    soft_text = template_style["soft_text"]
+    year_bg = template_style["year_bg"]
+    year_text = template_style["year_text"]
     return f"""
     <style>
       .cv-wrap {{
         background:{bg_css}; padding:22px; border-radius:6px;
-        font-family: {css_font_family}; color:#3a3a3a;
+        font-family: {css_font_family}; color:{text_color};
       }}
       .top {{ display:grid; grid-template-columns: 190px 1fr; gap:18px; align-items:start; }}
       .avatar {{
@@ -342,34 +386,34 @@ def _build_preview_html(data: dict, avatar_bytes: bytes | None) -> str:
         display:flex; align-items:center; justify-content:center; background:#e6dfd6;
         color:#7b6c5e; font-weight:700;
       }}
-      .name-main {{ font-size:68px; line-height:0.9; font-weight:900; color:#8a7364; letter-spacing:1px; }}
-      .name-sub {{ font-size:72px; line-height:0.8; color:#3a3a3a; margin-top:6px; }}
+      .name-main {{ font-size:68px; line-height:0.9; font-weight:900; color:{accent_color}; letter-spacing:1px; }}
+      .name-sub {{ font-size:72px; line-height:0.8; color:{text_color}; margin-top:6px; }}
       .job {{ font-size:30px; font-weight:700; letter-spacing:1px; margin-top:10px; }}
       .intro {{
         margin:14px 0 10px;
         font-size:28px; line-height:1.28;
       }}
       .intro-title {{
-        font-size:26px; color:#8a7364; font-weight:900;
+        font-size:26px; color:{accent_color}; font-weight:900;
         letter-spacing:0.5px; margin:0 0 6px;
       }}
-      .intro-body {{ font-size:24px; line-height:1.3; }}
+      .intro-body {{ font-size:24px; line-height:1.3; color:{soft_text}; }}
       .objective {{ margin:10px 0 0; }}
       .objective-title {{
-        font-size:26px; color:#8a7364; font-weight:900;
+        font-size:26px; color:{accent_color}; font-weight:900;
         letter-spacing:0.5px; margin:0 0 6px;
       }}
-      .objective-body {{ font-size:24px; line-height:1.3; }}
+      .objective-body {{ font-size:24px; line-height:1.3; color:{soft_text}; }}
       .contact {{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:16px; }}
       .label {{ font-size:30px; font-style:italic; font-weight:700; }}
       .value {{ font-size:27px; }}
       .bottom {{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }}
-      .section-title {{ font-size:44px; color:#8a7364; font-weight:900; margin:10px 0 8px; }}
+      .section-title {{ font-size:44px; color:{accent_color}; font-weight:900; margin:10px 0 8px; }}
       .edu-item, .exp-item {{ display:flex; margin-bottom:10px; font-size:28px; line-height:1.35; }}
       .dot {{ width:22px; font-weight:bold; }}
       .strong {{ font-weight:700; }}
       .year {{
-        background:#3a3a3a; color:#fff; border-radius:6px; font-size:24px;
+        background:{year_bg}; color:{year_text}; border-radius:6px; font-size:24px;
         font-weight:700; padding:2px 8px; height:max-content; margin-right:10px;
       }}
       .exp-body ul, .skills ul {{ margin:4px 0 0 18px; padding:0; }}
@@ -435,6 +479,11 @@ def _build_pdf(data: dict, avatar_bytes: bytes | None) -> bytes:
     pdf = canvas.Canvas(out, pagesize=A4)
     width, height = A4
     font_name = _register_font_if_possible(data.get("font_choice", "Arial"))
+    template_style = _get_template_style(data.get("template_name", "Vintage Kem (Mặc định)"))
+    accent_color = template_style["accent"]
+    text_color = template_style["text"]
+    soft_text_color = template_style["soft_text"]
+    year_bg = template_style["year_bg"]
 
     pad = 24
     bg_mode = data.get("bg_mode", "solid")
@@ -494,10 +543,10 @@ def _build_pdf(data: dict, avatar_bytes: bytes | None) -> bytes:
         pdf.circle(content_left + photo_w / 2, content_top - photo_h / 2, photo_w / 2, stroke=1, fill=0)
 
     tx = content_left + photo_w + 12
-    pdf.setFillColor(colors.HexColor("#8a7364"))
+    pdf.setFillColor(colors.HexColor(accent_color))
     pdf.setFont(font_name, 34)
     pdf.drawString(tx, content_top - 25, data["first_name"].upper())
-    pdf.setFillColor(colors.HexColor("#333333"))
+    pdf.setFillColor(colors.HexColor(text_color))
     pdf.setFont(font_name, 30)
     pdf.drawString(tx, content_top - 58, data["signature_name"])
     pdf.setFont(font_name, 12)
@@ -506,21 +555,21 @@ def _build_pdf(data: dict, avatar_bytes: bytes | None) -> bytes:
     y = content_top - photo_h - 20
 
     # Mục tiêu nghề nghiệp
-    pdf.setFillColor(colors.HexColor("#8a7364"))
+    pdf.setFillColor(colors.HexColor(accent_color))
     pdf.setFont(font_name, 12)
     pdf.drawString(content_left, y, "MỤC TIÊU NGHỀ NGHIỆP")
     y -= 14
-    pdf.setFillColor(colors.HexColor("#3c3c3c"))
+    pdf.setFillColor(colors.HexColor(soft_text_color))
     pdf.setFont(font_name, 10.5)
     y = _draw_wrapped_text(pdf, data.get("career_objective", ""), content_left, y, width - content_left - 28, 13)
 
     # Đoạn giới thiệu ngắn
     y -= 8
-    pdf.setFillColor(colors.HexColor("#8a7364"))
+    pdf.setFillColor(colors.HexColor(accent_color))
     pdf.setFont(font_name, 12)
     pdf.drawString(content_left, y, "ĐOẠN GIỚI THIỆU NGẮN")
     y -= 14
-    pdf.setFillColor(colors.HexColor("#3c3c3c"))
+    pdf.setFillColor(colors.HexColor(soft_text_color))
     pdf.setFont(font_name, 10.5)
     y = _draw_wrapped_text(pdf, data["summary"], content_left, y, width - content_left - 28, 14)
 
@@ -538,11 +587,11 @@ def _build_pdf(data: dict, avatar_bytes: bytes | None) -> bytes:
     right_x = content_left + (width - content_left - 28) * 0.49
     section_y = y - 40
 
-    pdf.setFillColor(colors.HexColor("#8a7364"))
+    pdf.setFillColor(colors.HexColor(accent_color))
     pdf.setFont(font_name, 15)
     pdf.drawString(left_x, section_y, "HỌC VẤN")
     cursor = section_y - 18
-    pdf.setFillColor(colors.HexColor("#333333"))
+    pdf.setFillColor(colors.HexColor(text_color))
     for edu in data["education_list"]:
         text = f"• {edu['school']}"
         pdf.setFont(font_name, 10.5)
@@ -553,27 +602,27 @@ def _build_pdf(data: dict, avatar_bytes: bytes | None) -> bytes:
         cursor = _draw_wrapped_text(pdf, detail, left_x + 10, cursor, (right_x - left_x) - 20, 12)
         cursor -= 4
 
-    pdf.setFillColor(colors.HexColor("#8a7364"))
+    pdf.setFillColor(colors.HexColor(accent_color))
     pdf.setFont(font_name, 15)
     pdf.drawString(left_x, cursor - 4, "KỸ NĂNG")
     cursor -= 22
-    pdf.setFillColor(colors.HexColor("#333333"))
+    pdf.setFillColor(colors.HexColor(text_color))
     pdf.setFont(font_name, 10.5)
     for skill in data["skills_list"]:
         pdf.drawString(left_x, cursor, f"• {skill}")
         cursor -= 13
 
-    pdf.setFillColor(colors.HexColor("#8a7364"))
+    pdf.setFillColor(colors.HexColor(accent_color))
     pdf.setFont(font_name, 15)
     pdf.drawString(right_x, section_y, "KINH NGHIỆM")
     rc = section_y - 18
     for exp in data["experience_list"]:
-        pdf.setFillColor(colors.HexColor("#333333"))
+        pdf.setFillColor(colors.HexColor(year_bg))
         pdf.roundRect(right_x, rc - 2, 26, 13, 3, stroke=0, fill=1)
         pdf.setFillColor(colors.white)
         pdf.setFont(font_name, 9)
         pdf.drawString(right_x + 4, rc + 1, exp["year"][:4] if exp["year"] else "")
-        pdf.setFillColor(colors.HexColor("#333333"))
+        pdf.setFillColor(colors.HexColor(text_color))
         pdf.setFont(font_name, 10.5)
         pdf.drawString(right_x + 32, rc, exp["company"])
         rc -= 12
@@ -630,6 +679,7 @@ default_data = {
     "email": "hello@reallygreatsite.com",
     "phone": "123-456-7890",
     "address": "123 Anywhere St., Any City",
+    "template_name": "Vintage Kem (Mặc định)",
     "career_objective": "Mục tiêu của tôi là trở thành một thiết kế đồ họa chuyên nghiệp, nâng cao kỹ năng và đóng góp hiệu quả vào các dự án truyền thông.",
     "summary": "Tôi là một nhà Thiết kế Đồ họa chuyên nghiệp trong ngành, có khả năng kết hợp hình ảnh, chữ in nghệ thuật và vận động trong cùng một thiết kế.",
     "education_raw": (
@@ -713,6 +763,15 @@ with left_col:
         )
 
     with st.container(border=True):
+        st.markdown("**Mẫu CV**")
+        st.caption("Thay đổi màu nhấn cho tiêu đề, năm kinh nghiệm và chữ chính.")
+        template_name = st.selectbox(
+            "Chọn phong cách",
+            list(TEMPLATE_PRESETS.keys()),
+            index=0,
+        )
+
+    with st.container(border=True):
         st.markdown("**Tùy chỉnh nền CV**")
         preset_options = {
             "Mặc định (kem nhạt)": ("solid", "#f4f0eb", "#f4f0eb"),
@@ -761,6 +820,7 @@ cv_data = {
     "email": email,
     "phone": phone,
     "address": address,
+    "template_name": template_name,
     "education_list": _parse_education(education_raw),
     "skills_list": _safe_lines(skills_raw),
     "experience_list": _parse_experience(experience_raw),
