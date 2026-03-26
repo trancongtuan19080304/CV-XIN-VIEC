@@ -29,14 +29,72 @@ _LINUX_VIETNAMESE_FONT_CANDIDATES = [
 
 
 def _collect_unicode_pdf_font_paths() -> list[Path]:
-    """Ưu tiên font kèm repo, sau đó font có sẵn trên Linux (deploy)."""
+    """Ưu tiên font kèm repo, sau đó font có sẵn trên Linux (deploy).
+
+    Trên Streamlit Cloud có thể không cài sẵn toàn bộ font ở /usr/share/fonts.
+    Vì vậy nếu các đường dẫn định sẵn không tồn tại, mình sẽ quét thêm.
+    """
     ordered: list[Path] = []
+
+    # 1) Font đi kèm repo (nếu bạn copy font vào `fonts/`)
     bundled = _APP_DIR / "fonts"
     if bundled.is_dir():
         ordered.extend(sorted(bundled.glob("*.ttf")))
         ordered.extend(sorted(bundled.glob("*.TTF")))
+
+    # 2) Các đường dẫn phổ biến (nếu tồn tại)
     for p in _LINUX_VIETNAMESE_FONT_CANDIDATES:
-        ordered.append(Path(p))
+        pp = Path(p)
+        if pp.is_file():
+            ordered.append(pp)
+
+    # 3) Nếu vẫn chưa có gì, scan các thư mục font phổ biến để tìm font Unicode
+    if len(ordered) < 2:
+        search_roots = [
+            Path("/usr/share/fonts"),
+            Path("/usr/local/share/fonts"),
+            Path("/root/.local/share/fonts"),
+            Path.home() / ".fonts",
+        ]
+        needles = [
+            "noto", "dejavu", "liberation", "freefont", "ubuntu", "verdana", "arial", "tahoma", "sans",
+        ]
+        results: list[tuple[int, Path]] = []
+
+        for root in search_roots:
+            if not root.is_dir():
+                continue
+            try:
+                for idx, ttf in enumerate(root.rglob("*.ttf")):
+                    name = ttf.name.lower()
+                    score = 0
+                    for n in needles:
+                        if n in name:
+                            score += 10
+                    # ưu tiên font sans/regular, giảm font icon/mono
+                    if "bold" in name:
+                        score += 1
+                    if "regular" in name or "sans" in name:
+                        score += 2
+                    if "fontawesome" in name or "icon" in name:
+                        score -= 50
+
+                    if score > 0:
+                        results.append((score, ttf))
+
+                    # tránh quét quá lâu
+                    if idx > 1200:
+                        break
+                    if len(results) >= 80:
+                        break
+            except Exception:
+                continue
+
+        results.sort(key=lambda x: (-x[0], str(x[1])))
+        for _, ttf in results[:40]:
+            if ttf not in ordered:
+                ordered.append(ttf)
+
     return ordered
 
 
