@@ -249,7 +249,21 @@ def _build_preview_html(data: dict, avatar_bytes: bytes | None) -> str:
       .name-main {{ font-size:68px; line-height:0.9; font-weight:900; color:#8a7364; letter-spacing:1px; }}
       .name-sub {{ font-size:72px; line-height:0.8; color:#3a3a3a; margin-top:6px; }}
       .job {{ font-size:30px; font-weight:700; letter-spacing:1px; margin-top:10px; }}
-      .intro {{ margin:14px 0; font-size:28px; line-height:1.28; }}
+      .intro {{
+        margin:14px 0 10px;
+        font-size:28px; line-height:1.28;
+      }}
+      .intro-title {{
+        font-size:26px; color:#8a7364; font-weight:900;
+        letter-spacing:0.5px; margin:0 0 6px;
+      }}
+      .intro-body {{ font-size:24px; line-height:1.3; }}
+      .objective {{ margin:10px 0 0; }}
+      .objective-title {{
+        font-size:26px; color:#8a7364; font-weight:900;
+        letter-spacing:0.5px; margin:0 0 6px;
+      }}
+      .objective-body {{ font-size:24px; line-height:1.3; }}
       .contact {{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:16px; }}
       .label {{ font-size:30px; font-style:italic; font-weight:700; }}
       .value {{ font-size:27px; }}
@@ -274,7 +288,14 @@ def _build_preview_html(data: dict, avatar_bytes: bytes | None) -> str:
           <div class="job">{html.escape(data["job_title"].upper())}</div>
         </div>
       </div>
-      <div class="intro">{html.escape(data["summary"])}</div>
+      <div class="objective">
+        <div class="objective-title">MỤC TIÊU NGHỀ NGHIỆP</div>
+        <div class="objective-body">{html.escape(data["career_objective"])}</div>
+      </div>
+      <div class="intro">
+        <div class="intro-title">ĐOẠN GIỚI THIỆU NGẮN</div>
+        <div class="intro-body">{html.escape(data["summary"])}</div>
+      </div>
       <div class="contact">
         <div><div class="label">Email</div><div class="value">{html.escape(data["email"])}</div></div>
         <div><div class="label">Điện thoại</div><div class="value">{html.escape(data["phone"])}</div></div>
@@ -387,8 +408,24 @@ def _build_pdf(data: dict, avatar_bytes: bytes | None) -> bytes:
     pdf.drawString(tx, content_top - 80, data["job_title"].upper())
 
     y = content_top - photo_h - 20
-    pdf.setFont(font_name, 10.5)
+
+    # Mục tiêu nghề nghiệp
+    pdf.setFillColor(colors.HexColor("#8a7364"))
+    pdf.setFont(font_name, 12)
+    pdf.drawString(content_left, y, "MỤC TIÊU NGHỀ NGHIỆP")
+    y -= 14
     pdf.setFillColor(colors.HexColor("#3c3c3c"))
+    pdf.setFont(font_name, 10.5)
+    y = _draw_wrapped_text(pdf, data.get("career_objective", ""), content_left, y, width - content_left - 28, 13)
+
+    # Đoạn giới thiệu ngắn
+    y -= 8
+    pdf.setFillColor(colors.HexColor("#8a7364"))
+    pdf.setFont(font_name, 12)
+    pdf.drawString(content_left, y, "ĐOẠN GIỚI THIỆU NGẮN")
+    y -= 14
+    pdf.setFillColor(colors.HexColor("#3c3c3c"))
+    pdf.setFont(font_name, 10.5)
     y = _draw_wrapped_text(pdf, data["summary"], content_left, y, width - content_left - 28, 14)
 
     y -= 6
@@ -497,6 +534,7 @@ default_data = {
     "email": "hello@reallygreatsite.com",
     "phone": "123-456-7890",
     "address": "123 Anywhere St., Any City",
+    "career_objective": "Mục tiêu của tôi là trở thành một thiết kế đồ họa chuyên nghiệp, nâng cao kỹ năng và đóng góp hiệu quả vào các dự án truyền thông.",
     "summary": "Tôi là một nhà Thiết kế Đồ họa chuyên nghiệp trong ngành, có khả năng kết hợp hình ảnh, chữ in nghệ thuật và vận động trong cùng một thiết kế.",
     "education_raw": (
         "ĐH Mỹ thuật Công nghiệp | 2024 - 2028 | Nghệ thuật đa phương tiện\n"
@@ -527,6 +565,11 @@ with left_col:
             signature_name = st.text_input("Tên kiểu chữ ký (dòng dưới)", value=default_data["signature_name"])
         job_title = st.text_input("Vị trí công việc", value=default_data["job_title"])
         summary = st.text_area("Đoạn giới thiệu ngắn", value=default_data["summary"], height=110)
+        career_objective = st.text_area(
+            "Mục tiêu nghề nghiệp",
+            value=default_data["career_objective"],
+            height=90,
+        )
         c1, c2, c3 = st.columns(3)
         with c1:
             email = st.text_input("Email", value=default_data["email"])
@@ -617,6 +660,7 @@ cv_data = {
     "first_name": first_name,
     "signature_name": signature_name,
     "job_title": job_title,
+    "career_objective": career_objective,
     "summary": summary,
     "email": email,
     "phone": phone,
