@@ -1,6 +1,8 @@
 import base64
 import html
 import io
+import os
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 
@@ -26,6 +28,11 @@ _LINUX_VIETNAMESE_FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/noto/NotoSans-VF.ttf",
     "/usr/share/fonts/opentype/noto/NotoSans-Regular.ttf",
 ]
+
+
+_UNIVERSAL_FONT_ID = "VNFont_Universal"
+# NotoSans có support Unicode tốt (tiếng Việt). Raw GitHub URL.
+_UNIVERSAL_FONT_DOWNLOAD_URL = "https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf"
 
 
 def _collect_unicode_pdf_font_paths() -> list[Path]:
@@ -154,7 +161,34 @@ def _register_font_if_possible(selected_font: str) -> str:
         if _register_ttf_once(preferred_id, font_path):
             return preferred_id
 
-    universal_id = "VNFont_Universal"
+    # Universal font: luôn cố gắng có Unicode để tránh lỗi ô vuông.
+    universal_id = _UNIVERSAL_FONT_ID
+
+    # 1) Ưu tiên font có trong repo `fonts/`
+    bundled_dir = _APP_DIR / "fonts"
+    bundled_candidates = [
+        bundled_dir / "NotoSans-Regular.ttf",
+        bundled_dir / "NotoSans-VF.ttf",
+        bundled_dir / "DejaVuSans.ttf",
+        bundled_dir / "LiberationSans-Regular.ttf",
+    ]
+    for p in bundled_candidates:
+        if _register_ttf_once(universal_id, p):
+            return universal_id
+
+    # 2) Nếu repo không có font, thử tải về (Streamlit Cloud thường có internet).
+    try:
+        if not bundled_dir.exists():
+            bundled_dir.mkdir(parents=True, exist_ok=True)
+        target = bundled_dir / "NotoSans-Regular.ttf"
+        if not target.is_file():
+            urllib.request.urlretrieve(_UNIVERSAL_FONT_DOWNLOAD_URL, str(target))
+        if _register_ttf_once(universal_id, target):
+            return universal_id
+    except Exception:
+        pass
+
+    # 3) Cuối cùng: dùng các font phổ biến có sẵn trên Linux (nếu có)
     for candidate in _collect_unicode_pdf_font_paths():
         if _register_ttf_once(universal_id, candidate):
             return universal_id
@@ -166,6 +200,10 @@ def _register_font_if_possible(selected_font: str) -> str:
     ]:
         if _register_ttf_once(universal_id, font_path):
             return universal_id
+    st.error(
+        "Không thể đăng ký font Unicode cho PDF. Vui lòng thêm file font TTF vào thư mục `fonts/` "
+        "(ví dụ `fonts/NotoSans-Regular.ttf`) và redeploy Streamlit."
+    )
     return "Helvetica"
 
 
